@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'text_to_sign_page.dart';
 import 'sign_to_text_page.dart';
 import 'learning_path_page.dart';
+import 'practice_page.dart';
 
 void main() {
   runApp(SignLanguageApp());
@@ -183,7 +184,6 @@ class _HomePageState extends State<HomePage>
           },
         ),
         SizedBox(height: 20),
-        // ───── LEARNING PATH CARD ─────
         _buildFeatureCard(
           icon: Icons.school,
           title: 'Learning Path',
@@ -196,6 +196,23 @@ class _HomePageState extends State<HomePage>
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => LearningPathPage()),
+            );
+          },
+        ),
+        SizedBox(height: 20),
+        // ───── PRACTICE CARD ─────
+        _buildFeatureCard(
+          icon: Icons.fitness_center,
+          title: 'Practice',
+          description:
+          'Practice sign language in real-time with instant feedback',
+          gradient: LinearGradient(
+            colors: [Color(0xFFfa709a), Color(0xFFfee140)],
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => PracticePage()),
             );
           },
         ),

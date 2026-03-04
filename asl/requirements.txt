@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+mediapipe==0.10.9
+opencv-python-headless
+numpy
+scikit-learn==1.5.1
+python-multipart
