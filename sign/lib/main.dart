@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'text_to_sign_page.dart';
 import 'sign_to_text_page.dart';
 import 'learning_path_page.dart';
-import 'practice_page.dart';
+import 'random_video_call_page.dart';
+import 'practice_page.dart'; // ← renamed
 
 void main() {
   runApp(SignLanguageApp());
@@ -155,8 +156,7 @@ class _HomePageState extends State<HomePage>
         _buildFeatureCard(
           icon: Icons.text_fields,
           title: 'Text to Sign',
-          description:
-          'Convert text or speech into sign language animations',
+          description: 'Convert text or speech into sign language animations',
           gradient: LinearGradient(
             colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
           ),
@@ -171,8 +171,7 @@ class _HomePageState extends State<HomePage>
         _buildFeatureCard(
           icon: Icons.videocam,
           title: 'Sign to Text',
-          description:
-          'Record or upload sign language videos for translation',
+          description: 'Record or upload sign language videos for translation',
           gradient: LinearGradient(
             colors: [Color(0xFFf093fb), Color(0xFFf5576c)],
           ),
@@ -200,21 +199,41 @@ class _HomePageState extends State<HomePage>
           },
         ),
         SizedBox(height: 20),
-        // ───── PRACTICE CARD ─────
         _buildFeatureCard(
-          icon: Icons.fitness_center,
-          title: 'Practice',
+          icon: Icons.people_alt_rounded,
+          title: 'Random Video Call',
           description:
-          'Practice sign language in real-time with instant feedback',
+          'Instantly connect with a random partner for live sign language practice',
           gradient: LinearGradient(
-            colors: [Color(0xFFfa709a), Color(0xFFfee140)],
+            colors: [Color(0xFF6a11cb), Color(0xFF2575fc)],
           ),
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => PracticePage()),
+              MaterialPageRoute(
+                  builder: (context) => const RandomVideoCallPage()),
             );
           },
+          badge: 'LIVE',
+        ),
+        SizedBox(height: 20),
+
+        // ───── PRACTICE CARD (replaces Test Model) ─────
+        _buildFeatureCard(
+          icon: Icons.sports_esports_rounded,
+          title: 'Practice',
+          description:
+          'Challenge yourself with guided sign prompts, build sentences freely, and track your progress',
+          gradient: LinearGradient(
+            colors: [Color(0xFF7c6bf8), Color(0xFFa78bfa)],
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PracticePage()),
+            );
+          },
+          badge: 'NEW',
         ),
       ],
     );
@@ -226,6 +245,7 @@ class _HomePageState extends State<HomePage>
     required String description,
     required Gradient gradient,
     required VoidCallback onTap,
+    String? badge,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -245,13 +265,40 @@ class _HomePageState extends State<HomePage>
         ),
         child: Row(
           children: [
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: gradient,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, size: 40, color: Colors.white),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: gradient,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(icon, size: 40, color: Colors.white),
+                ),
+                if (badge != null)
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: Container(
+                      padding:
+                      EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: badge == 'NEW'
+                            ? const Color(0xFF7c6bf8)
+                            : badge == 'LIVE'
+                            ? Colors.red
+                            : const Color(0xFF11998e),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(badge,
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+              ],
             ),
             SizedBox(width: 20),
             Expanded(

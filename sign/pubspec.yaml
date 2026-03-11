@@ -19,6 +19,9 @@ dependencies:
   path_provider: ^2.0.14
   flutter_tts: ^3.8.5
   translator: ^1.0.0
+  socket_io_client: ^2.0.3+1
+  agora_rtc_engine: ^6.3.2
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

@@ -11,7 +11,8 @@ class TextToSignPage extends StatefulWidget {
   _TextToSignPageState createState() => _TextToSignPageState();
 }
 
-class _TextToSignPageState extends State<TextToSignPage> {
+class _TextToSignPageState extends State<TextToSignPage>
+    with SingleTickerProviderStateMixin {
   TextEditingController _textController = TextEditingController();
   TextEditingController _originalTextController = TextEditingController();
   VideoPlayerController? _videoController;
@@ -27,13 +28,74 @@ class _TextToSignPageState extends State<TextToSignPage> {
   String _selectedLanguage = 'en-US';
   String _selectedLanguageName = 'English';
 
-  // Available languages
+  // ── 10 major Indian languages + English ────────────────────────────────────
   final Map<String, Map<String, String>> _languages = {
-    'en-US': {'name': 'English', 'code': 'en'},
-    'ta-IN': {'name': 'தமிழ் (Tamil)', 'code': 'ta'},
-    'hi-IN': {'name': 'हिन्दी (Hindi)', 'code': 'hi'},
-    'te-IN': {'name': 'తెలుగు (Telugu)', 'code': 'te'},
-    'ml-IN': {'name': 'മലയാളം (Malayalam)', 'code': 'ml'},
+    'en-US': {
+      'name': 'English',
+      'native': 'English',
+      'code': 'en',
+      'flag': '🇬🇧',
+    },
+    'hi-IN': {
+      'name': 'Hindi',
+      'native': 'हिन्दी',
+      'code': 'hi',
+      'flag': '🇮🇳',
+    },
+    'ta-IN': {
+      'name': 'Tamil',
+      'native': 'தமிழ்',
+      'code': 'ta',
+      'flag': '🇮🇳',
+    },
+    'te-IN': {
+      'name': 'Telugu',
+      'native': 'తెలుగు',
+      'code': 'te',
+      'flag': '🇮🇳',
+    },
+    'ml-IN': {
+      'name': 'Malayalam',
+      'native': 'മലയാളം',
+      'code': 'ml',
+      'flag': '🇮🇳',
+    },
+    'kn-IN': {
+      'name': 'Kannada',
+      'native': 'ಕನ್ನಡ',
+      'code': 'kn',
+      'flag': '🇮🇳',
+    },
+    'mr-IN': {
+      'name': 'Marathi',
+      'native': 'मराठी',
+      'code': 'mr',
+      'flag': '🇮🇳',
+    },
+    'gu-IN': {
+      'name': 'Gujarati',
+      'native': 'ગુજરાતી',
+      'code': 'gu',
+      'flag': '🇮🇳',
+    },
+    'pa-IN': {
+      'name': 'Punjabi',
+      'native': 'ਪੰਜਾਬੀ',
+      'code': 'pa',
+      'flag': '🇮🇳',
+    },
+    'bn-IN': {
+      'name': 'Bengali',
+      'native': 'বাংলা',
+      'code': 'bn',
+      'flag': '🇮🇳',
+    },
+    'or-IN': {
+      'name': 'Odia',
+      'native': 'ଓଡ଼ିଆ',
+      'code': 'or',
+      'flag': '🇮🇳',
+    },
   };
 
   // Video queue management
@@ -99,54 +161,38 @@ class _TextToSignPageState extends State<TextToSignPage> {
     'yourself': 'Yourself.mp4', 'z': 'Z.mp4',
   };
 
+  // ── Animation for language sheet ───────────────────────────────────────────
+  late AnimationController _sheetAnim;
+
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+    _sheetAnim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300));
   }
 
-  void _showLanguageDialog() {
-    showDialog(
+  // ── Language picker bottom sheet ───────────────────────────────────────────
+  void _showLanguagePicker() {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Color(0xFF1a1a2e),
-        title: Text(
-          'Select Language',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: Container(
-          width: double.maxFinite,
-          child: ListView(
-            shrinkWrap: true,
-            children: _languages.entries.map((entry) {
-              bool isSelected = _selectedLanguage == entry.key;
-              return ListTile(
-                title: Text(
-                  entry.value['name']!,
-                  style: TextStyle(
-                    color: isSelected ? Color(0xFF4facfe) : Colors.white,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-                leading: Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: isSelected ? Color(0xFF4facfe) : Color(0xFF7c7c8a),
-                ),
-                onTap: () {
-                  setState(() {
-                    _selectedLanguage = entry.key;
-                    _selectedLanguageName = entry.value['name']!;
-                  });
-                  Navigator.pop(context);
-                },
-              );
-            }).toList(),
-          ),
-        ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _LanguageSheet(
+        languages: _languages,
+        selectedKey: _selectedLanguage,
+        onSelect: (key) {
+          setState(() {
+            _selectedLanguage = key;
+            _selectedLanguageName = _languages[key]!['name']!;
+          });
+          Navigator.pop(context);
+        },
       ),
     );
   }
 
+  // ── Speech recognition ─────────────────────────────────────────────────────
   void _listen() async {
     if (!_isListening) {
       bool available = await _speech.initialize(
@@ -155,7 +201,7 @@ class _TextToSignPageState extends State<TextToSignPage> {
         },
         onError: (val) {
           setState(() => _isListening = false);
-          _showAlert("Error", "Could not recognize speech. Please try again.");
+          _showAlert('Error', 'Could not recognize speech. Please try again.');
         },
       );
 
@@ -164,40 +210,25 @@ class _TextToSignPageState extends State<TextToSignPage> {
         _speech.listen(
           localeId: _selectedLanguage,
           onResult: (val) async {
-            String recognizedText = val.recognizedWords;
+            final recognized = val.recognizedWords;
+            setState(() => _originalTextController.text = recognized);
 
-            // Store original text
-            setState(() {
-              _originalTextController.text = recognizedText;
-            });
-
-            // If not English, translate to English
             if (_selectedLanguage != 'en-US') {
               try {
-                String languageCode = _languages[_selectedLanguage]!['code']!;
-                var translation = await translator.translate(
-                  recognizedText,
-                  from: languageCode,
-                  to: 'en',
-                );
-                setState(() {
-                  _textController.text = translation.text;
-                });
-              } catch (e) {
-                print("Translation error: $e");
-                setState(() {
-                  _textController.text = recognizedText;
-                });
+                final langCode = _languages[_selectedLanguage]!['code']!;
+                final translation =
+                await translator.translate(recognized, from: langCode, to: 'en');
+                setState(() => _textController.text = translation.text);
+              } catch (_) {
+                setState(() => _textController.text = recognized);
               }
             } else {
-              setState(() {
-                _textController.text = recognizedText;
-              });
+              setState(() => _textController.text = recognized);
             }
           },
         );
       } else {
-        _showAlert("Error", "Speech recognition not available");
+        _showAlert('Error', 'Speech recognition not available');
       }
     } else {
       setState(() => _isListening = false);
@@ -205,20 +236,20 @@ class _TextToSignPageState extends State<TextToSignPage> {
     }
   }
 
+  // ── Video helpers ──────────────────────────────────────────────────────────
   List<String> _getVideoFilesForText(String text) {
     List<String> videoFiles = [];
-    text = text.toLowerCase().trim();
-    text = text.replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
-    List<String> words = text.split(RegExp(r'\s+'))
+    text = text.toLowerCase().trim().replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
+    final words = text
+        .split(RegExp(r'\s+'))
         .where((w) => w.isNotEmpty && !STOP_WORDS.contains(w))
         .toList();
-    for (String word in words) {
+    for (final word in words) {
       if (VIDEO_MAP.containsKey(word)) {
         videoFiles.add(VIDEO_MAP[word]!);
         continue;
       }
-      for (int i = 0; i < word.length; i++) {
-        String char = word[i];
+      for (final char in word.split('')) {
         if (VIDEO_MAP.containsKey(char)) videoFiles.add(VIDEO_MAP[char]!);
       }
     }
@@ -232,9 +263,7 @@ class _TextToSignPageState extends State<TextToSignPage> {
         _videoController!.removeListener(_videoListener);
         if (_videoController!.value.isPlaying) await _videoController!.pause();
         await _videoController!.dispose();
-      } catch (e) {
-        print("Error disposing video: $e");
-      } finally {
+      } catch (_) {} finally {
         _videoController = null;
         _isDisposing = false;
       }
@@ -243,14 +272,12 @@ class _TextToSignPageState extends State<TextToSignPage> {
 
   Future<void> _generateAndPlayVideo() async {
     FocusScope.of(context).unfocus();
-    String text = _textController.text.trim();
+    final text = _textController.text.trim();
     if (text.isEmpty) {
-      _showAlert("Please Enter Text", "Type a message or use the microphone");
+      _showAlert('Please Enter Text', 'Type a message or use the microphone');
       return;
     }
-
     await _cleanupCurrentVideo();
-
     setState(() {
       _isLoading = true;
       _isPlayingSequence = false;
@@ -259,17 +286,14 @@ class _TextToSignPageState extends State<TextToSignPage> {
       _videoQueue = [];
       _currentVideoIndex = 0;
     });
-
-    await Future.delayed(Duration(milliseconds: 100));
-
+    await Future.delayed(const Duration(milliseconds: 100));
     _videoQueue = _getVideoFilesForText(text);
-
     if (_videoQueue.isEmpty) {
       setState(() => _isLoading = false);
-      _showAlert("No Videos Found", "Could not find sign language videos for this text");
+      _showAlert('No Videos Found',
+          'Could not find sign language videos for this text');
       return;
     }
-
     _currentVideoIndex = 0;
     await _playNextVideo();
   }
@@ -283,35 +307,27 @@ class _TextToSignPageState extends State<TextToSignPage> {
       });
       return;
     }
-
-    String videoFile = _videoQueue[_currentVideoIndex];
-
+    final videoFile = _videoQueue[_currentVideoIndex];
     try {
       if (_videoController != null) {
         await _cleanupCurrentVideo();
-        await Future.delayed(Duration(milliseconds: 50));
+        await Future.delayed(const Duration(milliseconds: 50));
       }
-
-      final ByteData data = await rootBundle.load('assets/videos/$videoFile');
-      final Directory tempDir = await getTemporaryDirectory();
-      final File tempVideo = File('${tempDir.path}/$videoFile');
+      final data = await rootBundle.load('assets/videos/$videoFile');
+      final tempDir = await getTemporaryDirectory();
+      final tempVideo = File('${tempDir.path}/$videoFile');
       await tempVideo.writeAsBytes(data.buffer.asUint8List());
-
       _videoController = VideoPlayerController.file(tempVideo);
       await _videoController!.initialize();
-
       if (!mounted || _isDisposing) return;
-
       setState(() {
         _isPlayingSequence = true;
         _isLoading = false;
         _isInitialized = true;
       });
-
       _videoController!.addListener(_videoListener);
       await _videoController!.play();
-    } catch (e) {
-      print("Video error: $e");
+    } catch (_) {
       _currentVideoIndex++;
       await _playNextVideo();
     }
@@ -321,29 +337,25 @@ class _TextToSignPageState extends State<TextToSignPage> {
     if (_videoController != null &&
         !_isDisposing &&
         mounted &&
-        _videoController!.value.isInitialized) {
-      if (!_videoController!.value.isPlaying &&
-          _videoController!.value.position >= _videoController!.value.duration) {
-        _videoController!.removeListener(_videoListener);
-        _currentVideoIndex++;
-        _playNextVideo();
-      }
+        _videoController!.value.isInitialized &&
+        !_videoController!.value.isPlaying &&
+        _videoController!.value.position >= _videoController!.value.duration) {
+      _videoController!.removeListener(_videoListener);
+      _currentVideoIndex++;
+      _playNextVideo();
     }
   }
 
   Future<void> _replaySequence() async {
     if (_videoQueue.isEmpty) return;
-
     await _cleanupCurrentVideo();
-
     setState(() {
       _isLoading = true;
       _sequenceCompleted = false;
       _isInitialized = false;
       _currentVideoIndex = 0;
     });
-
-    await Future.delayed(Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 100));
     await _playNextVideo();
   }
 
@@ -351,13 +363,15 @@ class _TextToSignPageState extends State<TextToSignPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Color(0xFF1a1a2e),
-        title: Text(title, style: TextStyle(color: Colors.white)),
-        content: Text(message, style: TextStyle(color: Color(0xFFa0a0b2))),
+        backgroundColor: const Color(0xFF1a1a2e),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content:
+        Text(message, style: const TextStyle(color: Color(0xFFa0a0b2))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("OK", style: TextStyle(color: Color(0xFF4facfe))),
+            child: const Text('OK',
+                style: TextStyle(color: Color(0xFF4facfe))),
           ),
         ],
       ),
@@ -371,296 +385,381 @@ class _TextToSignPageState extends State<TextToSignPage> {
     _videoController?.dispose();
     _textController.dispose();
     _originalTextController.dispose();
+    _sheetAnim.dispose();
     _speech.stop();
     super.dispose();
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    final isNonEnglish = _selectedLanguage != 'en-US';
+    final hasOriginal = _originalTextController.text.isNotEmpty;
+
     return Scaffold(
-      backgroundColor: Color(0xFF0a0a0f),
+      backgroundColor: const Color(0xFF0a0a0f),
       appBar: AppBar(
-        backgroundColor: Color(0xFF1a1a2e),
+        backgroundColor: const Color(0xFF1a1a2e),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Text to Sign Language',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Text to Sign Language',
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: SafeArea(
         child: Column(
           children: [
+            // ── Hero banner ──────────────────────────────────────────────
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-              decoration: BoxDecoration(
+              padding:
+              const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+                  colors: [
+                    Color(0xFF1a1a2e),
+                    Color(0xFF16213e),
+                    Color(0xFF0f3460)
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: Column(
-                children: [
-                  Icon(Icons.sign_language, size: 48, color: Color(0xFF4facfe)),
-                  SizedBox(height: 12),
-                  Text(
-                    "Multi-Language Sign Translation",
+              child: Column(children: [
+                const Icon(Icons.sign_language,
+                    size: 44, color: Color(0xFF4facfe)),
+                const SizedBox(height: 10),
+                const Text('Multi-Language Sign Translation',
                     style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    "Speak in any language, translate to sign language",
-                    style: TextStyle(fontSize: 13, color: Color(0xFFa0a0b2)),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+                        fontSize: 15,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 4),
+                Text(
+                  'Supports ${_languages.length - 1} Indian languages  •  Auto-translated to sign',
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFFa0a0b2)),
+                  textAlign: TextAlign.center,
+                ),
+              ]),
             ),
+
+            // ── Scrollable content ───────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Language Selector
+                    // ── Language selector ────────────────────────────────
                     GestureDetector(
-                      onTap: _showLanguageDialog,
+                      onTap: _showLanguagePicker,
                       child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
-                          color: Color(0xFF1a1a2e),
+                          color: const Color(0xFF1a1a2e),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Color(0xFF2a2a3e)),
+                          border:
+                          Border.all(color: const Color(0xFF2a2a3e)),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.language, color: Color(0xFF4facfe), size: 24),
-                                SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Speech Language",
+                        child: Row(children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4facfe)
+                                  .withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.language,
+                                color: Color(0xFF4facfe), size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Speech Language',
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF7c7c8a),
-                                      ),
+                                          fontSize: 11,
+                                          color: Color(0xFF7c7c8a))),
+                                  const SizedBox(height: 3),
+                                  Row(children: [
+                                    Text(
+                                      _languages[_selectedLanguage]![
+                                      'flag']! +
+                                          '  ',
+                                      style: const TextStyle(fontSize: 16),
                                     ),
-                                    SizedBox(height: 4),
                                     Text(
                                       _selectedLanguageName,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white),
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Icon(Icons.arrow_drop_down, color: Color(0xFF4facfe), size: 28),
-                          ],
-                        ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _languages[_selectedLanguage]![
+                                      'native']!,
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF7c7c8a)),
+                                    ),
+                                  ]),
+                                ]),
+                          ),
+                          const Icon(Icons.keyboard_arrow_down_rounded,
+                              color: Color(0xFF4facfe), size: 26),
+                        ]),
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                    // Original Spoken Text Section (only show if not English and has text)
-                    if (_selectedLanguage != 'en-US' && _originalTextController.text.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.record_voice_over, color: Color(0xFFffa726), size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                "What You Spoke ($_selectedLanguageName)",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
+                    // ── Language chips row ───────────────────────────────
+                    SizedBox(
+                      height: 38,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _languages.length,
+                        separatorBuilder: (_, __) =>
+                        const SizedBox(width: 8),
+                        itemBuilder: (_, i) {
+                          final key = _languages.keys.elementAt(i);
+                          final lang = _languages[key]!;
+                          final selected = _selectedLanguage == key;
+                          return GestureDetector(
+                            onTap: () => setState(() {
+                              _selectedLanguage = key;
+                              _selectedLanguageName = lang['name']!;
+                            }),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: selected
+                                    ? const LinearGradient(colors: [
+                                  Color(0xFF4facfe),
+                                  Color(0xFF00f2fe)
+                                ])
+                                    : null,
+                                color: selected
+                                    ? null
+                                    : const Color(0xFF1a1a2e),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: selected
+                                      ? Colors.transparent
+                                      : const Color(0xFF2a2a3e),
                                 ),
                               ),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Color(0xFF1a1a2e),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Color(0xFFffa726), width: 1.5),
+                              child: Text(
+                                '${lang['flag']}  ${lang['name']}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w400,
+                                  color: selected
+                                      ? Colors.white
+                                      : const Color(0xFF7c7c8a),
+                                ),
+                              ),
                             ),
-                            child: Text(
-                              _originalTextController.text,
-                              style: TextStyle(
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Original spoken text (non-English) ───────────────
+                    if (isNonEnglish && hasOriginal) ...[
+                      _sectionLabel(
+                          Icons.record_voice_over,
+                          'What You Spoke  ·  $_selectedLanguageName',
+                          const Color(0xFFffa726)),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1a1a2e),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                              color: const Color(0xFFffa726), width: 1.5),
+                        ),
+                        child: Text(_originalTextController.text,
+                            style: const TextStyle(
                                 color: Color(0xFFffa726),
                                 fontSize: 16,
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          // Translation arrow
-                          Center(
-                            child: Icon(
-                              Icons.arrow_downward,
-                              color: Color(0xFF4facfe),
-                              size: 24,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                        ],
+                                height: 1.5)),
                       ),
+                      const SizedBox(height: 14),
+                      const Center(
+                        child: Icon(Icons.arrow_downward_rounded,
+                            color: Color(0xFF4facfe), size: 22),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
 
-                    // English Translation Section
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.edit, color: Color(0xFF4facfe), size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              _selectedLanguage != 'en-US'
-                                  ? "English Translation (for sign language)"
-                                  : "English Text (for sign language)",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Color(0xFF1a1a2e),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Color(0xFF2a2a3e)),
-                          ),
-                          child: TextField(
-                            controller: _textController,
-                            maxLines: 4,
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                            decoration: InputDecoration(
-                              contentPadding: EdgeInsets.all(20),
-                              hintText: _selectedLanguage != 'en-US'
-                                  ? "Translated English text will appear here..."
-                                  : "Type or speak your message...",
-                              hintStyle: TextStyle(color: Color(0xFF7c7c8a)),
-                              border: InputBorder.none,
-                            ),
-                          ),
-                        ),
-                      ],
+                    // ── English translation input ─────────────────────────
+                    _sectionLabel(
+                      Icons.edit_rounded,
+                      isNonEnglish
+                          ? 'English Translation  (used for sign)'
+                          : 'English Text  (for sign language)',
+                      const Color(0xFF4facfe),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 10),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1a1a2e),
+                        borderRadius: BorderRadius.circular(16),
+                        border:
+                        Border.all(color: const Color(0xFF2a2a3e)),
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        maxLines: 4,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 16),
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.all(18),
+                          hintText: isNonEnglish
+                              ? 'Translated English text will appear here…'
+                              : 'Type or speak your message…',
+                          hintStyle: const TextStyle(
+                              color: Color(0xFF7c7c8a)),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: _isLoading ? null : _generateAndPlayVideo,
-                            child: Container(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: _isLoading
-                                    ? LinearGradient(colors: [Color(0xFF7c7c8a), Color(0xFF5c5c6a)])
-                                    : LinearGradient(colors: [Color(0xFF4facfe), Color(0xFF00f2fe)]),
-                              ),
-                              child: Center(
-                                child: _isLoading
-                                    ? SizedBox(
+                    // ── Action buttons ───────────────────────────────────
+                    Row(children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap:
+                          _isLoading ? null : _generateAndPlayVideo,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              gradient: _isLoading
+                                  ? const LinearGradient(colors: [
+                                Color(0xFF5c5c6a),
+                                Color(0xFF4a4a58)
+                              ])
+                                  : const LinearGradient(colors: [
+                                Color(0xFF4facfe),
+                                Color(0xFF00f2fe)
+                              ]),
+                            ),
+                            child: Center(
+                              child: _isLoading
+                                  ? const SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                                    : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.play_arrow, color: Colors.white),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Generate Sign Language",
+                                      color: Colors.white,
+                                      strokeWidth: 2))
+                                  : const Row(
+                                mainAxisAlignment:
+                                MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.play_arrow_rounded,
+                                      color: Colors.white, size: 22),
+                                  SizedBox(width: 8),
+                                  Text('Generate Sign Language',
                                       style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white)),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                        SizedBox(width: 12),
-                        Container(
+                      ),
+                      const SizedBox(width: 12),
+                      // Mic button
+                      GestureDetector(
+                        onTap: _listen,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 56,
+                          height: 56,
                           decoration: BoxDecoration(
-                            gradient: _isListening
-                                ? LinearGradient(colors: [Colors.redAccent, Colors.red])
-                                : LinearGradient(colors: [Color(0xFF4facfe), Color(0xFF00f2fe)]),
                             shape: BoxShape.circle,
+                            gradient: _isListening
+                                ? const LinearGradient(colors: [
+                              Colors.redAccent,
+                              Colors.red
+                            ])
+                                : const LinearGradient(colors: [
+                              Color(0xFF4facfe),
+                              Color(0xFF00f2fe)
+                            ]),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: (_isListening
+                                      ? Colors.red
+                                      : const Color(0xFF4facfe))
+                                      .withOpacity(0.4),
+                                  blurRadius: 12,
+                                  spreadRadius: 2)
+                            ],
                           ),
-                          child: IconButton(
-                            iconSize: 32,
-                            icon: Icon(
-                              _isListening ? Icons.mic : Icons.mic_none,
-                              color: Colors.white,
-                            ),
-                            onPressed: _listen,
+                          child: Icon(
+                            _isListening ? Icons.mic : Icons.mic_none,
+                            color: Colors.white,
+                            size: 26,
                           ),
                         ),
-                      ],
-                    ),
-                    SizedBox(height: 24),
-
-                    // Video Display
-                    Container(
-                      width: MediaQuery.of(context).size.width - 32,
-                      height: MediaQuery.of(context).size.width - 32,
-                      decoration: BoxDecoration(
-                        color: Color(0xFF1a1a2e),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Color(0xFF2a2a3e), width: 2),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: _isInitialized &&
-                            _videoController != null &&
-                            _videoController!.value.isInitialized &&
-                            !_isDisposing
-                            ? Stack(
-                          children: [
+                    ]),
+                    const SizedBox(height: 24),
+
+                    // ── Video player ─────────────────────────────────────
+                    AspectRatio(
+                      aspectRatio: 1,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1a1a2e),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: const Color(0xFF2a2a3e), width: 2),
+                        ),
+                        clipBehavior: Clip.hardEdge,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: _isInitialized &&
+                              _videoController != null &&
+                              _videoController!.value.isInitialized &&
+                              !_isDisposing
+                              ? Stack(children: [
                             SizedBox.expand(
                               child: FittedBox(
                                 fit: BoxFit.cover,
                                 child: SizedBox(
-                                  width: _videoController!.value.size.width,
-                                  height: _videoController!.value.size.height,
-                                  child: VideoPlayer(_videoController!),
+                                  width: _videoController!
+                                      .value.size.width,
+                                  height: _videoController!
+                                      .value.size.height,
+                                  child: VideoPlayer(
+                                      _videoController!),
                                 ),
                               ),
                             ),
@@ -672,57 +771,208 @@ class _TextToSignPageState extends State<TextToSignPage> {
                                     child: GestureDetector(
                                       onTap: _replaySequence,
                                       child: Container(
-                                        padding: EdgeInsets.all(20),
-                                        decoration: BoxDecoration(
+                                        padding:
+                                        const EdgeInsets.all(20),
+                                        decoration:
+                                        const BoxDecoration(
                                           color: Color(0xFF4facfe),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Icon(
-                                          Icons.replay,
-                                          color: Colors.white,
-                                          size: 48,
-                                        ),
+                                        child: const Icon(
+                                            Icons.replay_rounded,
+                                            color: Colors.white,
+                                            size: 48),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                          ],
-                        )
-                            : Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          ])
+                              : Column(
+                            mainAxisAlignment:
+                            MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.person, size: 50, color: Color(0xFF7c7c8a)),
-                              SizedBox(height: 20),
-                              Text(
-                                "AI Avatar Ready",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4facfe)
+                                      .withOpacity(0.1),
+                                  shape: BoxShape.circle,
                                 ),
+                                child: const Icon(Icons.person,
+                                    size: 50,
+                                    color: Color(0xFF4facfe)),
                               ),
-                              SizedBox(height: 8),
-                              Text(
-                                "Your sign language avatar\nwill appear here",
-                                style: TextStyle(
-                                  color: Color(0xFF7c7c8a),
-                                  fontSize: 14,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
+                              const SizedBox(height: 16),
+                              const Text('AI Avatar Ready',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 17,
+                                      fontWeight:
+                                      FontWeight.w600)),
+                              const SizedBox(height: 6),
+                              const Text(
+                                  'Your sign language avatar\nwill appear here',
+                                  style: TextStyle(
+                                      color: Color(0xFF7c7c8a),
+                                      fontSize: 13),
+                                  textAlign: TextAlign.center),
                             ],
                           ),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(IconData icon, String text, Color color) => Row(
+    children: [
+      Icon(icon, color: color, size: 18),
+      const SizedBox(width: 8),
+      Text(text,
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.white)),
+    ],
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Language bottom sheet
+// ─────────────────────────────────────────────────────────────────────────────
+class _LanguageSheet extends StatelessWidget {
+  final Map<String, Map<String, String>> languages;
+  final String selectedKey;
+  final ValueChanged<String> onSelect;
+
+  const _LanguageSheet({
+    required this.languages,
+    required this.selectedKey,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0d0e1a),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 30),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2a2b3e),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Select Speech Language',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(height: 6),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+                '10 Indian languages supported  •  Auto-translated to English for sign',
+                style:
+                TextStyle(color: Color(0xFF5a5b7a), fontSize: 12)),
+          ),
+          const SizedBox(height: 16),
+          // Grid of language tiles
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate:
+            const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 3.0,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: languages.length,
+            itemBuilder: (_, i) {
+              final key = languages.keys.elementAt(i);
+              final lang = languages[key]!;
+              final selected = selectedKey == key;
+              return GestureDetector(
+                onTap: () => onSelect(key),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: selected
+                        ? const LinearGradient(colors: [
+                      Color(0xFF4facfe),
+                      Color(0xFF00f2fe)
+                    ])
+                        : null,
+                    color:
+                    selected ? null : const Color(0xFF1a1b2e),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: selected
+                          ? Colors.transparent
+                          : const Color(0xFF2a2b3e),
+                    ),
+                  ),
+                  child: Row(children: [
+                    Text(lang['flag']!,
+                        style: const TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                          mainAxisAlignment:
+                          MainAxisAlignment.center,
+                          children: [
+                            Text(lang['name']!,
+                                style: TextStyle(
+                                    color: selected
+                                        ? Colors.white
+                                        : const Color(0xFFd0d0e0),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700),
+                                overflow: TextOverflow.ellipsis),
+                            Text(lang['native']!,
+                                style: TextStyle(
+                                    color: selected
+                                        ? Colors.white70
+                                        : const Color(0xFF5a5b7a),
+                                    fontSize: 11),
+                                overflow: TextOverflow.ellipsis),
+                          ]),
+                    ),
+                    if (selected)
+                      const Icon(Icons.check_circle_rounded,
+                          color: Colors.white, size: 16),
+                  ]),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
